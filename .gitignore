@@ -6,3 +6,5 @@
 /cypress/videos
 /.tmp
 .DS_Store
+temp/
+*.log

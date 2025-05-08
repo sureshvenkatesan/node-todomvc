@@ -1,0 +1,88 @@
+# Github Workflow to Show the Github OIDC Integration with JFrog
+name: "JFrog-GitHub-OIDC-Integration"
+on: push
+
+# This is required as per
+# https://docs.github.com/en/actions/deployment/security-hardening-your-deployments/configuring-openid-connect-in-cloud-providers#adding-permissions-settings
+permissions:
+  actions: read # For detecting the Github Actions environment.
+  id-token: write # for creating OIDC tokens for signing.
+  packages: write # for uploading attestations.
+  security-events: write # Required for uploading code scanning
+  attestations: write
+  contents: read
+jobs:
+  build:
+     runs-on: ubuntu-latest
+     env:
+      OIDC_AUDIENCE: 'varun-github-aud'
+      OIDC_PROVIDER: 'varun-github-oidc'
+      # Prerequisite Repository Settings in UI: 'training-npm' used as PLATFORM_REPO, is a virtual repository. This Virtual Repository, 
+      # consists of a local npm repository to upload the artifact '' and a remote npm repo " to resolve build dependencies. 
+      #The Default Deployment Repository Setting, inside the Virtual Repo is set to Local Repo ''
+      PLATFORM_REPO: 'varunm-npm'
+     defaults:
+       run:
+         working-directory: examples/typescript-react
+     steps:
+       - name: Checkout
+         uses: actions/checkout@v3
+              
+       - name: Setup Node npm
+         uses: actions/setup-node@v3
+   
+       - name: Setup JFrog CLI
+         uses: jfrog/setup-jfrog-cli@v4
+         env:  
+           JF_URL: ${{ vars.JF_URL }}
+         with:
+           oidc-provider-name: ${{ env.OIDC_PROVIDER }}
+           oidc-audience: ${{ env.OIDC_AUDIENCE }}
+
+       - name: Set CLI Config
+         run: jf npm-config --global=true --repo-resolve=$PLATFORM_REPO --repo-deploy=$PLATFORM_REPO
+           
+       - name: Install Dependencies
+         run: jf npm install
+           
+       #- name: Run tests
+       #  run: npm test
+         
+       - name: Publish
+         run: jf npm publish
+       - name: Show npm publish debug log
+         if: failure()
+         run: cat ~/.npm/_logs/*.log
+
+         
+       - name: Publish Build info With JFrog CLI
+         run: |
+          # Collect environment variables for the build
+          jf rt build-collect-env
+          # Collect VCS details from git and add them to the build
+          jf rt build-add-git
+          # Publish build info
+          jf rt build-publish
+      #Adding a Delay for the Xray Security Scan for the Builds.
+       - name: Sleep for 60 seconds
+         uses: jakejarvis/wait-action@master
+         with:
+           time: '60s'
+      #Steps Below are to Perform Security Scans and Upload Results to Github Advanced Security. This process invokes JFrog xray to 
+      #perform the scanning.
+       - name: Run JFrog SAST
+         run: |
+           jf audit --sca --format=sarif > jfrog_sast.sarif
+           cat jfrog_sast.sarif
+       - name: Set SARIF file path
+         run: echo "SARIF_FILE_PATH=$(pwd)/jfrog_sast.sarif" >> $GITHUB_ENV
+
+       - name: Upload output to github advanced security
+         uses: github/codeql-action/upload-sarif@v3
+         with:
+          sarif_file: ${{ env.SARIF_FILE_PATH }}
+       
+       - name: build scan
+         if: ${{ true }}
+         run: |
+            jf build-scan --vuln --fail=false

@@ -1,9 +1,7 @@
 # Github Workflow to Show the Github OIDC Integration with JFrog
-name: "JFrog-GitHub-OIDC-Integration"
+name: "NodeJS:TODO MVC"
 on: push
 
-# This is required as per
-# https://docs.github.com/en/actions/deployment/security-hardening-your-deployments/configuring-openid-connect-in-cloud-providers#adding-permissions-settings
 permissions:
   actions: read # For detecting the Github Actions environment.
   id-token: write # for creating OIDC tokens for signing.
@@ -11,78 +9,202 @@ permissions:
   security-events: write # Required for uploading code scanning
   attestations: write
   contents: read
+env:
+  WORKSPACE_TYPESCRIPT_REACT: "examples/typescript-react"
+  BUILD_ID: "ga-${{github.run_number}}"
+  RT_REPO_NPM_VIRTUAL: "todomvc-npm-virtual"
+  RT_REPO_NPM_DEFAULT_LOCAL: "todomvc-npm-sandbox-local"
+  RT_REPO_DOCKER_VIRTUAL: "todomvc-docker-virtual"
+  RT_REPO_DOCKER_DEFAULT_LOCAL: "todomvc-docker-sandbox-local"
+  EVIDENCE_JSON: "my-evidence.json"
 jobs:
-  build:
-     runs-on: ubuntu-latest
-     env:
-      OIDC_AUDIENCE: 'varun-github-aud'
-      OIDC_PROVIDER: 'varun-github-oidc'
-      # Prerequisite Repository Settings in UI: 'training-npm' used as PLATFORM_REPO, is a virtual repository. This Virtual Repository, 
-      # consists of a local npm repository to upload the artifact '' and a remote npm repo " to resolve build dependencies. 
-      #The Default Deployment Repository Setting, inside the Virtual Repo is set to Local Repo ''
-      PLATFORM_REPO: 'todomvc-npm-virtual'
-     defaults:
+  npmPackage:
+    name: "NPM Package"
+    runs-on: ${{ matrix.os }}
+    env: 
+      BUILD_NAME: "todomvc-npm"
+    defaults:
        run:
-         working-directory: examples/typescript-react
-     steps:
-       - name: Checkout
-         uses: actions/checkout@v3
-              
-       - name: Setup Node npm
-         uses: actions/setup-node@v3
-   
-       - name: Setup JFrog CLI
-         uses: jfrog/setup-jfrog-cli@v4
-         env:  
-           JF_URL: ${{ vars.JF_URL }}
-         with:
-           oidc-provider-name: ${{ env.OIDC_PROVIDER }}
-           oidc-audience: ${{ env.OIDC_AUDIENCE }}
+         working-directory: ${{env.WORKSPACE_TYPESCRIPT_REACT}}
+    steps:
+      - name: "Setup JFrog CLI"
+        uses: jfrog/setup-jfrog-cli@v4
+        id: setup-cli
+        env:
+          JF_URL: ${{ vars.JF_URL }}
+          JF_GIT_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          version: latest
+          oidc-provider-name: ${{ vars.JF_OIDC_PROVIDER_NAME }}
 
-       - name: Set CLI Config
-         run: jf npm-config --global=true --repo-resolve=$PLATFORM_REPO --repo-deploy=$PLATFORM_REPO
-           
-       - name: Install Dependencies
-         run: jf npm install
-           
-       #- name: Run tests
-       #  run: npm test
-         
-       - name: Publish
-         run: jf npm publish
-       - name: Show npm publish debug log
-         if: failure()
-         run: cat ~/.npm/_logs/*.log
+      - name: "Clone VCS"
+        continue-on-error: true
+        uses: actions/checkout@v4
 
-         
-       - name: Publish Build info With JFrog CLI
-         run: |
-          # Collect environment variables for the build
-          jf rt build-collect-env
-          # Collect VCS details from git and add them to the build
-          jf rt build-add-git
-          # Publish build info
-          jf rt build-publish
-      #Adding a Delay for the Xray Security Scan for the Builds.
-       - name: Sleep for 60 seconds
-         uses: jakejarvis/wait-action@master
-         with:
-           time: '60s'
-      #Steps Below are to Perform Security Scans and Upload Results to Github Advanced Security. This process invokes JFrog xray to 
-      #perform the scanning.
-       - name: Run JFrog SAST
-         run: |
-           jf audit --sca --format=sarif > jfrog_sast.sarif
-           cat jfrog_sast.sarif
-       - name: Set SARIF file path
-         run: echo "SARIF_FILE_PATH=$(pwd)/jfrog_sast.sarif" >> $GITHUB_ENV
+      - name: "Config JF-CLI"
+        run: |
+          export JFROG_CLI_LOG_LEVEL=${{ env.JFROG_CLI_LOG_LEVEL }}
+          pwd
+          jf npmc --global --repo-resolve ${{ env.RT_REPO_NPM_VIRTUAL}} --repo-deploy ${{ env.RT_REPO_NPM_VIRTUAL}} 
+          jf npm cache clean --force
+          tree .
 
-       - name: Upload output to github advanced security
-         uses: github/codeql-action/upload-sarif@v3
-         with:
-          sarif_file: ${{ env.SARIF_FILE_PATH }}
-       
-       - name: build scan
-         if: ${{ true }}
-         run: |
-            jf build-scan --vuln --fail=false
+      - name: "Software version"
+        continue-on-error: true
+        run: |
+          # JFrog CLI version
+          jf --version
+          # Ping the server
+          jf rt ping
+          # NodeJS
+          node -v
+          npm -v
+          # Docker
+          docker -v
+          # jf config
+          jf config show
+
+      - name: "NPM: prestep summary"
+        continue-on-error: true
+        run: |
+          jfcliv=`jf -v`
+          nodeVer=`node -v`
+          npmVer=`node -v`
+          echo "# :frog: NPM Prestep Summary :pushpin:" >> $GITHUB_STEP_SUMMARY
+          echo " " >> $GITHUB_STEP_SUMMARY
+          echo " " >> $GITHUB_STEP_SUMMARY
+          echo " - Installed JFrog CLI [${jfcliv}](https://jfrog.com/getcli/) and [Node ${nodeVer} and NPM ${npmVer}](https://github.com/actions/setup-node) " >> $GITHUB_STEP_SUMMARY
+          echo " - $(jf --version) " >> $GITHUB_STEP_SUMMARY
+          echo " - Node $(node -v) " >> $GITHUB_STEP_SUMMARY
+          echo " - NPM $(npm -v) " >> $GITHUB_STEP_SUMMARY
+          echo " - Configured the JFrog Cli with SaaS Artifactory OIDC integration: ${{ vars.JF_OIDC_PROVIDER_NAME }} " >> $GITHUB_STEP_SUMMARY
+          echo " - Variables info" >> $GITHUB_STEP_SUMMARY
+          echo "    - ID: ${{env.BUILD_ID}} " >> $GITHUB_STEP_SUMMARY
+          echo "    - Build Name: ${{env.BUILD_NAME}} " >> $GITHUB_STEP_SUMMARY
+          echo "    - Repo URL: ${{env.RT_REPO_NPM_VIRTUAL}}" >> $GITHUB_STEP_SUMMARY
+          echo " " >> $GITHUB_STEP_SUMMARY
+
+      - name: "Curation"  
+        timeout-minutes: 15    
+        continue-on-error: false    
+        run: |
+          jf ca --format=table --threads=100
+
+      - name: "Audit: Xray & JAS" 
+        timeout-minutes: 15  
+        continue-on-error: false 
+        run: |
+          jf audit --npm --sast=true --sca=true --secrets=true --licenses=true --validate-secrets=true --vuln=true --format=table --extended-table=true --threads=100 --fail=false
+
+      - name: "Package: npm Build"   # ref: https://docs.jfrog-applications.jfrog.io/jfrog-applications/jfrog-cli/cli-for-jfrog-artifactory/package-managers-integration#installing-npm-packages
+        continue-on-error: false
+        run: |
+          jf npm install --build-name=${{ env.BUILD_NAME}} --build-number=${{ env.BUILD_ID}} 
+
+      - name: "Xray: npm Artifact scan"
+        timeout-minutes: 15  
+        continue-on-error: true    
+        run: |
+          jf scan . --format=table --extended-table=true --threads=100 --fail=false
+
+      - name: "Package: npm publish"
+        continue-on-error: false
+        run: |
+          jf npm publish --build-name=${{ env.BUILD_NAME}} --build-number=${{ env.BUILD_ID}} 
+
+      - name: "BCE: Collect env"
+        continue-on-error: true
+        run: jf rt bce ${{ env.BUILD_NAME}} ${{ env.BUILD_ID}} 
+ 
+      - name: "BAG: Add VCS info"
+        continue-on-error: true
+        run: jf rt bag ${{ env.BUILD_NAME}} ${{ env.BUILD_ID}} 
+
+      - name: "BP: Build Publish"   
+        continue-on-error: false
+        run: jf rt bp ${{ env.BUILD_NAME}} ${{ env.BUILD_ID}} --detailed-summary=true
+
+      - name: "Evidence: Build Publish"
+        continue-on-error: true 
+        run: |
+          echo '{ "actor": "${{github.actor}}", "pipeline": "github actions","build_name": "${{env.BUILD_NAME}}", "build_id": "${{env.BUILD_ID}}", "evd": "Evidence-BuildPublish"}' > ./${{env.EVIDENCE_JSON}}
+          cat ./${{env.EVIDENCE_JSON}}
+          jf evd create --build-name ${{env.BUILD_NAME}} --build-number ${{env.BUILD_ID}} --predicate ./${{env.EVIDENCE_JSON}} --predicate-type https://jfrog.com/evidence/build-signature/v1 --key "${{secrets.APP_JFROG_EVD_PRIVATEKEY}}" --key-alias ${{secrets.APP_EVIDENCE_KEY_ALIAS}}
+          echo "    - Evidence for BUILD Publish attached. " >> $GITHUB_STEP_SUMMARY
+
+
+
+
+
+  dockerPackage:
+    name: "Docker Package"
+    runs-on: ubuntu-latest
+    env: 
+      BUILD_NAME: "todomvc-docker"
+      DOCKER_BUILDX_PLATFORMS: 'linux/amd64,linux/arm64'
+    defaults:
+       run:
+         working-directory: ${{env.WORKSPACE_TYPESCRIPT_REACT}}
+    steps:
+      - name: "Setup JFrog CLI"
+        uses: jfrog/setup-jfrog-cli@v4
+        id: setup-cli
+        env:
+          JF_URL: ${{ vars.JF_URL }}
+          JF_GIT_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          version: latest
+          oidc-provider-name: ${{ vars.JF_OIDC_PROVIDER_NAME }}
+
+      - name: "Clone VCS"
+        continue-on-error: true
+        uses: actions/checkout@v4
+
+      - name: "Docker: prestep-summary"
+        run: |
+          echo "# :frog: Docker: Prestep Summary :pushpin:" >> $GITHUB_STEP_SUMMARY
+          echo " " >> $GITHUB_STEP_SUMMARY
+          echo " " >> $GITHUB_STEP_SUMMARY
+          echo "    - $(jf --version) " >> $GITHUB_STEP_SUMMARY
+          echo "    - $(node -v) " >> $GITHUB_STEP_SUMMARY
+          echo "    - $(npm -v) " >> $GITHUB_STEP_SUMMARY
+          echo "    - $(docker -v) " >> $GITHUB_STEP_SUMMARY
+          echo " - Docker buildx configured with platforms: [${{env.DOCKER_BUILDX_PLATFORMS}}](https://docs.docker.com/reference/cli/docker/buildx/create/#platform) " >> $GITHUB_STEP_SUMMARY
+          echo " - Configured the JFrog Cli and Docker login with SaaS Artifactory OIDC integration  " >> $GITHUB_STEP_SUMMARY
+          echo " " >> $GITHUB_STEP_SUMMARY
+          echo " - Variables info" >> $GITHUB_STEP_SUMMARY
+          echo "    - ID: ${{env.BUILD_ID}} " >> $GITHUB_STEP_SUMMARY
+          echo "    - Build Name: ${{env.BUILD_NAME}} " >> $GITHUB_STEP_SUMMARY
+          echo "    - Docker Repo URL: ${{env.RT_REPO_DOCKER_VIRTUAL}}" >> $GITHUB_STEP_SUMMARY
+          echo " " >> $GITHUB_STEP_SUMMARY
+        
+            
+
+
+  
+
+  yarnPackage:
+    name: "Yarn Package"
+    runs-on: ubuntu-latest
+    env: 
+      BUILD_NAME: "todomvc-yarn"
+      BUILD_ID: "ga-${{github.run_number}}"
+      RT_REPO_NPM_VIRTUAL: "todomvc-npm-virtual"
+      RT_REPO_NPM_DEFAULT_LOCAL: "todomvc-npm-sandbox-local"
+    defaults:
+       run:
+         working-directory: ${{env.WORKSPACE_TYPESCRIPT_REACT}}
+    steps:
+      - name: "Setup JFrog CLI"
+        uses: jfrog/setup-jfrog-cli@v4
+        id: setup-cli
+        env:
+          JF_URL: ${{ vars.JF_URL }}
+          JF_GIT_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          version: latest
+          oidc-provider-name: ${{ vars.JF_OIDC_PROVIDER_NAME }}
+      - name: "Clone VCS"
+        continue-on-error: true
+        uses: actions/checkout@v4
+

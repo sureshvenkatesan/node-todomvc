@@ -1,0 +1,43 @@
+0 verbose cli /opt/homebrew/Cellar/node/23.11.0/bin/node /opt/homebrew/bin/npm
+1 info using npm@10.9.2
+2 info using node@v23.11.0
+3 silly config load:file:/opt/homebrew/lib/node_modules/npm/npmrc
+4 silly config load:file:/Users/krishnam/Documents/GitHub-JFrog/todomvc/examples/closure/.npmrc
+5 silly config load:file:/Users/krishnam/.npmrc
+6 silly config load:file:/Users/krishnam/Documents/GitHub-JFrog/todomvc/examples/closure/etc/npmrc
+7 verbose title npm i
+8 verbose argv "i" "--package-lock-only" "--prefix" "/Users/krishnam/Documents/GitHub-JFrog/todomvc/examples/closure"
+9 verbose logfile logs-max:10 dir:/Users/krishnam/Documents/GitHub-JFrog/todomvc/temp/_logs/2025-05-08T15_23_25_666Z-
+10 verbose logfile /Users/krishnam/Documents/GitHub-JFrog/todomvc/temp/_logs/2025-05-08T15_23_25_666Z-debug-0.log
+11 silly logfile start cleaning logs, removing 1 files
+12 silly logfile done cleaning log files
+13 silly packumentCache heap:4345298944 maxSize:1086324736 maxEntrySize:543162368
+14 silly idealTree buildDeps
+15 silly fetch manifest todomvc-app-css@^2.1.0
+16 silly packumentCache full:https://registry.npmjs.org/todomvc-app-css cache-miss
+17 http cache https://registry.npmjs.org/todomvc-app-css 5ms (cache hit)
+18 silly packumentCache full:https://registry.npmjs.org/todomvc-app-css set size:39927 disposed:false
+19 silly fetch manifest todomvc-common@^1.0.1
+20 silly packumentCache full:https://registry.npmjs.org/todomvc-common cache-miss
+21 http cache https://registry.npmjs.org/todomvc-common 2ms (cache hit)
+22 silly packumentCache full:https://registry.npmjs.org/todomvc-common set size:17017 disposed:false
+23 silly fetch manifest plovr@^3.0.0
+24 silly packumentCache full:https://registry.npmjs.org/plovr cache-miss
+25 http fetch GET 200 https://registry.npmjs.org/plovr 283ms (cache miss)
+26 silly packumentCache full:https://registry.npmjs.org/plovr set size:undefined disposed:false
+27 silly placeDep ROOT plovr@3.1.0 OK for:  want: ^3.0.0
+28 silly placeDep ROOT todomvc-app-css@2.4.3 REPLACE for:  want: ^2.1.0
+29 silly placeDep ROOT todomvc-common@1.0.5 REPLACE for:  want: ^1.0.1
+30 silly audit bulk request {
+30 silly audit   plovr: [ '3.1.0' ],
+30 silly audit   'todomvc-app-css': [ '2.4.3' ],
+30 silly audit   'todomvc-common': [ '1.0.5' ]
+30 silly audit }
+31 http fetch POST 200 https://registry.npmjs.org/-/npm/v1/security/advisories/bulk 81ms
+32 silly audit report {}
+33 verbose cwd /Users/krishnam/Documents/GitHub-JFrog/todomvc
+34 verbose os Darwin 24.3.0
+35 verbose node v23.11.0
+36 verbose npm  v10.9.2
+37 verbose exit 0
+38 info ok

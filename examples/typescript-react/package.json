@@ -1,4 +1,6 @@
 {
+  "name": "todomvc-typescript-react",
+  "version": "1.0.0",
   "private": true,
   "scripts": {
     "build": "./node_modules/typescript/bin/tsc -p ./js/ && node ./node_modules/browserify/bin/cmd ./js/app.js -o ./js/bundle.js",

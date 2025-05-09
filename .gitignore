@@ -8,3 +8,5 @@
 .DS_Store
 temp/
 *.log
+*-lock.json
+*/*-lock.json

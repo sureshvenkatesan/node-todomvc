@@ -21,7 +21,7 @@ env:
 jobs:
   npmPackage:
     name: "NPM Package"
-    runs-on: ${{ matrix.os }}
+    runs-on: ubuntu-latest
     env: 
       BUILD_NAME: "todomvc-npm"
     defaults:

@@ -227,7 +227,7 @@ jobs:
         env:
           NAME_LINK: "${{vars.JF_URL}}/ui/artifactory/lifecycle/?bundleName=${{env.BUILD_NAME}}&bundleToFlash=${{env.BUILD_NAME}}&repositoryKey=release-bundles-v2&activeKanbanTab=promotion"
           VER_LINK: "${{vars.JF_URL}}/ui/artifactory/lifecycle/?bundleName='${{env.BUILD_NAME}}'&bundleToFlash='${{env.BUILD_NAME}}'&releaseBundleVersion='${{env.BUILD_ID}}'&repositoryKey=release-bundles-v2&activeVersionTab=Version%20Timeline&activeKanbanTab=promotion"
-          CURL_URL: "${{vars.JF_URL}}/lifecycle/api/v2/promotion/records/${{env.BUILD_NAME}}/${{env.BUILD_NAME}}?async=false"
+          CURL_URL: "${{vars.JF_URL}}/lifecycle/api/v2/promotion/records/${{env.BUILD_NAME}}/${{env.BUILD_ID}}?async=false"
         run: |
           echo "# :frog:📦 Release Bundle v2 Summary :rocket: " >> $GITHUB_STEP_SUMMARY
           echo " " >> $GITHUB_STEP_SUMMARY
@@ -241,7 +241,6 @@ jobs:
           # export RB2_STATUS=$(echo $RB2_STATUS_RESP | jq -r '.promotions[0].environment')
           items=$(echo "$RB2_STATUS_RESP" | jq -c -r '.promotions[]')
           for item in ${items[@]}; do
-            # {"status":"COMPLETED","repository_key":"release-bundles-v2","release_bundle_name":"spring-petclinic-ga","release_bundle_version":"58","environment":"QA","service_id":"s","created_by":"token:***","created":"2024-09-21T00:53:57.326Z","created_millis":1726880037326,"xray_retrieval_status":"RECEIVED"}
             envVal=$(echo $item | jq -r '.environment')
             crtVal=$(echo $item | jq -r '.created')
             echo " - ${envVal} on ${crtVal} " >> $GITHUB_STEP_SUMMARY

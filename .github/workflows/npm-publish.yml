@@ -17,6 +17,7 @@ env:
   RT_REPO_DOCKER_VIRTUAL: "todomvc-docker-virtual"
   RT_REPO_DOCKER_DEFAULT_LOCAL: "todomvc-docker-sandbox-local"
   EVIDENCE_JSON: "my-evidence.json"
+  RBv2_SPEC_JSON: "RBv2-SPEC.json"
 jobs:
   npmPackage:
     name: "NPM Package"
@@ -124,6 +125,12 @@ jobs:
         continue-on-error: false
         run: jf rt bp ${{ env.BUILD_NAME}} ${{ env.BUILD_ID}} --detailed-summary=true
 
+      - name: "BuildInfo: Xray - Build scan"
+        timeout-minutes: 30
+        continue-on-error: true 
+        run: |
+          jf bs ${{env.BUILD_NAME}} ${{env.BUILD_ID}} --fail=false --format=table --extended-table=true --rescan=false --vuln=true
+
       - name: "Evidence: Build Publish"
         continue-on-error: true 
         run: |
@@ -132,6 +139,107 @@ jobs:
           jf evd create --build-name ${{env.BUILD_NAME}} --build-number ${{env.BUILD_ID}} --predicate ./${{env.EVIDENCE_JSON}} --predicate-type https://jfrog.com/evidence/build-signature/v1 --key "${{secrets.APP_JFROG_EVD_PRIVATEKEY}}" --key-alias ${{secrets.APP_EVIDENCE_KEY_ALIAS}}
           echo "    - Evidence for BUILD Publish attached. " >> $GITHUB_STEP_SUMMARY
 
+      - name: "Optional: Build Scan V2"  # https://jfrog.com/help/r/xray-rest-apis/scan-build-v2
+        # jf xr curl /api/v2/ci/build -H 'Content-Type: application/json' -d '{"build_name": "spring-petclinic", "build_number": "ga-gdl-xray-50","rescan":true }'
+        run: |
+          jf xr curl /api/v2/ci/build -H 'Content-Type: application/json' -d '{"build_name": "${{env.BUILD_NAME}}", "build_number": "${{env.BUILD_ID}}","rescan":false  }'
+
+      # Release Bundle v2
+      - name: "RLM: RBv2 spec - create"
+        run: |
+          echo "{ \"files\": [ {\"build\": \"${{env.BUILD_NAME}}/${{env.BUILD_ID}}\" } ] }"  > ${{env.RBv2_SPEC_JSON}}
+          cat ${{env.RBv2_SPEC_JSON}}
+
+      - name: "RLM: RBv2 Create NEW"
+        run: |
+          jf rbc ${{env.BUILD_NAME}} ${{env.BUILD_ID}} --sync=true --signing-key=${{secrets.RBV2_SIGNING_KEY}} --spec=${{env.RBv2_SPEC_JSON}}
+
+      # Evidence - RBv2 new references
+      #     Docs# https://jfrog.com/help/r/jfrog-artifactory-documentation/evidence-management
+      #     CLI# https://docs.jfrog-applications.jfrog.io/jfrog-applications/jfrog-cli/binaries-management-with-jfrog-artifactory/evidence-service
+      - name: "Evidence: RBv2 state NEW"
+        continue-on-error: true 
+        env:
+          # https://psazuse.jfrog.io/ui/artifactory/lifecycle/?bundleName=spring-petclinic&bundleToFlash=spring-petclinic&repositoryKey=release-bundles-v2&activeKanbanTab=promotion
+          NAME_LINK: "${{env.JF_RT_URL}}/ui/artifactory/lifecycle/?bundleName=${{env.BUILD_NAME}}&bundleToFlash=${{env.BUILD_NAME}}&repositoryKey=release-bundles-v2&activeKanbanTab=promotion"
+          VER_LINK: "${{env.JF_RT_URL}}/ui/artifactory/lifecycle/?bundleName='${{env.BUILD_NAME}}'&bundleToFlash='${{env.BUILD_NAME}}'&releaseBundleVersion='${{env.BUILD_ID}}'&repositoryKey=release-bundles-v2&activeVersionTab=Version%20Timeline&activeKanbanTab=promotion"
+        run: |
+          echo '{ "actor": "${{github.actor}}", "pipeline": "github actions", "build_name": "${{env.BUILD_NAME}}", "build_id": "${{env.BUILD_ID}}", "evd": "Evidence-RBv2", "rbv2_stage": "NEW" }' > ./${{env.EVIDENCE_JSON}}
+          cat ./${{env.EVIDENCE_JSON}}
+          jf evd create --release-bundle ${{env.BUILD_NAME}} --release-bundle-version ${{env.BUILD_ID}} --predicate ./${{env.EVIDENCE_JSON}} --predicate-type https://jfrog.com/evidence/rbv2-new/v1 --key "${{secrets.APP_JFROG_EVD_PRIVATEKEY}}" --key-alias ${{secrets.APP_EVIDENCE_KEY_ALIAS}}
+          echo "    - Evidence for RBv2 attached at [${{env.BUILD_NAME}}](${{env.VER_LINK}}) " >> $GITHUB_STEP_SUMMARY
+
+      - name: "RLM: RBv2 promote DEV"
+        run: |
+          jf rbp ${{env.BUILD_NAME}} ${{env.BUILD_ID}} DEV --sync=true --signing-key=${{secrets.RBV2_SIGNING_KEY}}  
+
+      - name: "Evidence: RBv2 state DEV"
+        continue-on-error: true 
+        env:
+          # https://psazuse.jfrog.io/ui/artifactory/lifecycle/?bundleName=spring-petclinic&bundleToFlash=spring-petclinic&repositoryKey=release-bundles-v2&activeKanbanTab=promotion
+          NAME_LINK: "${{env.JF_RT_URL}}/ui/artifactory/lifecycle/?bundleName=${{env.BUILD_NAME}}&bundleToFlash=${{env.BUILD_NAME}}&repositoryKey=release-bundles-v2&activeKanbanTab=promotion"
+          VER_LINK: "${{env.JF_RT_URL}}/ui/artifactory/lifecycle/?bundleName='${{env.BUILD_NAME}}'&bundleToFlash='${{env.BUILD_NAME}}'&releaseBundleVersion='${{env.BUILD_ID}}'&repositoryKey=release-bundles-v2&activeVersionTab=Version%20Timeline&activeKanbanTab=promotion"
+        run: |
+          echo '{ "actor": "${{github.actor}}", "pipeline": "github actions", "build_name": "${{env.BUILD_NAME}}", "build_id": "${{env.BUILD_ID}}", "evd": "Evidence-RBv2", "rbv2_stage": "DEV" }' > ./${{env.EVIDENCE_JSON}}
+          cat ./${{env.EVIDENCE_JSON}}
+          jf evd create --release-bundle ${{env.BUILD_NAME}} --release-bundle-version ${{env.BUILD_ID}} --predicate ./${{env.EVIDENCE_JSON}} --predicate-type https://jfrog.com/evidence/rbv2-new/v1 --key "${{secrets.APP_JFROG_EVD_PRIVATEKEY}}" --key-alias ${{secrets.APP_EVIDENCE_KEY_ALIAS}}
+          echo "    - Evidence for RBv2 attached at [${{env.BUILD_NAME}}](${{env.VER_LINK}}) " >> $GITHUB_STEP_SUMMARY
+
+      - name: "RLM: RBv2 promote QA"
+        run: |
+          jf rbp ${{env.BUILD_NAME}} ${{env.BUILD_ID}} QA --sync=true --signing-key=${{secrets.RBV2_SIGNING_KEY}}  
+
+      - name: "Evidence: RBv2 state QA"
+        continue-on-error: true 
+        env:
+          # https://psazuse.jfrog.io/ui/artifactory/lifecycle/?bundleName=spring-petclinic&bundleToFlash=spring-petclinic&repositoryKey=release-bundles-v2&activeKanbanTab=promotion
+          NAME_LINK: "${{env.JF_RT_URL}}/ui/artifactory/lifecycle/?bundleName=${{env.BUILD_NAME}}&bundleToFlash=${{env.BUILD_NAME}}&repositoryKey=release-bundles-v2&activeKanbanTab=promotion"
+          VER_LINK: "${{env.JF_RT_URL}}/ui/artifactory/lifecycle/?bundleName='${{env.BUILD_NAME}}'&bundleToFlash='${{env.BUILD_NAME}}'&releaseBundleVersion='${{env.BUILD_ID}}'&repositoryKey=release-bundles-v2&activeVersionTab=Version%20Timeline&activeKanbanTab=promotion"
+        run: |
+          echo '{ "actor": "${{github.actor}}", "pipeline": "github actions", "build_name": "${{env.BUILD_NAME}}", "build_id": "${{env.BUILD_ID}}", "evd": "Evidence-RBv2", "rbv2_stage": "QA" }' > ./${{env.EVIDENCE_JSON}}
+          cat ./${{env.EVIDENCE_JSON}}
+          jf evd create --release-bundle ${{env.BUILD_NAME}} --release-bundle-version ${{env.BUILD_ID}} --predicate ./${{env.EVIDENCE_JSON}} --predicate-type https://jfrog.com/evidence/rbv2-new/v1 --key "${{secrets.APP_JFROG_EVD_PRIVATEKEY}}" --key-alias ${{secrets.APP_EVIDENCE_KEY_ALIAS}}
+          echo "    - Evidence for RBv2 attached at [${{env.BUILD_NAME}}](${{env.VER_LINK}}) " >> $GITHUB_STEP_SUMMARY
+
+      - name: "RLM: RBv2 promote PROD"
+        run: |
+          jf rbp ${{env.BUILD_NAME}} ${{env.BUILD_ID}} PROD --sync=true --signing-key=${{secrets.RBV2_SIGNING_KEY}}  
+
+      - name: "Evidence: RBv2 state PROD"
+        continue-on-error: true 
+        env:
+          # https://psazuse.jfrog.io/ui/artifactory/lifecycle/?bundleName=spring-petclinic&bundleToFlash=spring-petclinic&repositoryKey=release-bundles-v2&activeKanbanTab=promotion
+          NAME_LINK: "${{env.JF_RT_URL}}/ui/artifactory/lifecycle/?bundleName=${{env.BUILD_NAME}}&bundleToFlash=${{env.BUILD_NAME}}&repositoryKey=release-bundles-v2&activeKanbanTab=promotion"
+          VER_LINK: "${{env.JF_RT_URL}}/ui/artifactory/lifecycle/?bundleName='${{env.BUILD_NAME}}'&bundleToFlash='${{env.BUILD_NAME}}'&releaseBundleVersion='${{env.BUILD_ID}}'&repositoryKey=release-bundles-v2&activeVersionTab=Version%20Timeline&activeKanbanTab=promotion"
+        run: |
+          echo '{ "actor": "${{github.actor}}", "pipeline": "github actions", "build_name": "${{env.BUILD_NAME}}", "build_id": "${{env.BUILD_ID}}", "evd": "Evidence-RBv2", "rbv2_stage": "PROD" }' > ./${{env.EVIDENCE_JSON}}
+          cat ./${{env.EVIDENCE_JSON}}
+          jf evd create --release-bundle ${{env.BUILD_NAME}} --release-bundle-version ${{env.BUILD_ID}} --predicate ./${{env.EVIDENCE_JSON}} --predicate-type https://jfrog.com/evidence/rbv2-new/v1 --key "${{secrets.APP_JFROG_EVD_PRIVATEKEY}}" --key-alias ${{secrets.APP_EVIDENCE_KEY_ALIAS}}
+          echo "    - Evidence for RBv2 attached at [${{env.BUILD_NAME}}](${{env.VER_LINK}}) " >> $GITHUB_STEP_SUMMARY
+
+      - name: "Optional: rbv2-summary"
+        env:
+          NAME_LINK: "${{env.JF_RT_URL}}/ui/artifactory/lifecycle/?bundleName=${{env.BUILD_NAME}}&bundleToFlash=${{env.BUILD_NAME}}&repositoryKey=release-bundles-v2&activeKanbanTab=promotion"
+          VER_LINK: "${{env.JF_RT_URL}}/ui/artifactory/lifecycle/?bundleName='${{env.BUILD_NAME}}'&bundleToFlash='${{env.BUILD_NAME}}'&releaseBundleVersion='${{env.BUILD_ID}}'&repositoryKey=release-bundles-v2&activeVersionTab=Version%20Timeline&activeKanbanTab=promotion"
+        run: |
+          echo "# :frog:📦 Release Bundle v2 Summary :rocket: " >> $GITHUB_STEP_SUMMARY
+          echo " " >> $GITHUB_STEP_SUMMARY
+          echo " " >> $GITHUB_STEP_SUMMARY
+          # echo "<details><summary>The RBv2 artifacts has elevated to the subsequent stages</summary>" >> $GITHUB_STEP_SUMMARY
+          echo "The Build Artifacts has elevated to the subsequent stages" >> $GITHUB_STEP_SUMMARY
+          RB2_STATUS_RESP=$(curl -v -G ${JF_RT_URL}/lifecycle/api/v2/promotion/records/${BUILD_NAME}/${BUILD_ID}?async=false -H 'Content-Type:  application/json' -H "Authorization: Bearer ${{steps.setup-cli.outputs.oidc-token}}")
+          echo $RB2_STATUS_RESP > RBv2_STATUS-${{env.BUILD_ID}}.json
+          cat RBv2_STATUS-${{env.BUILD_ID}}.json 
+          # export RB2_STATUS=$(echo $RB2_STATUS_RESP | jq -r '.promotions[0].environment')
+          items=$(echo "$RB2_STATUS_RESP" | jq -c -r '.promotions[]')
+          for item in ${items[@]}; do
+            # {"status":"COMPLETED","repository_key":"release-bundles-v2","release_bundle_name":"spring-petclinic-ga","release_bundle_version":"58","environment":"QA","service_id":"s","created_by":"token:***","created":"2024-09-21T00:53:57.326Z","created_millis":1726880037326,"xray_retrieval_status":"RECEIVED"}
+            envVal=$(echo $item | jq -r '.environment')
+            crtVal=$(echo $item | jq -r '.created')
+            echo " - ${envVal} on ${crtVal} " >> $GITHUB_STEP_SUMMARY
+          done
+          echo "  - Release bundle [${{env.BUILD_NAME}}](${{env.NAME_LINK}}):[${{env.BUILD_NAME}}](${{env.VER_LINK}}) " >> $GITHUB_STEP_SUMMARY
+          echo " " >> $GITHUB_STEP_SUMMARY
 
 
 
@@ -178,7 +286,10 @@ jobs:
           echo "    - Docker Repo URL: ${{env.RT_REPO_DOCKER_VIRTUAL}}" >> $GITHUB_STEP_SUMMARY
           echo " " >> $GITHUB_STEP_SUMMARY
         
-            
+      - name: Create ENV variables
+        run: |
+          echo "RT_REPO_DOCKER_URL=${{vars.JF_URL}}/${{env.RT_REPO_DOCKER_VIRTUAL}}/${{env.BUILD_NAME}}:${{env.BUILD_ID}}" >> $GITHUB_ENV
+              
 
 
   

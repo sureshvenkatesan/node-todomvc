@@ -32,7 +32,7 @@ jobs:
         uses: jfrog/setup-jfrog-cli@v4
         id: setup-cli
         env:
-          JF_URL: ${{ vars.JF_URL }}
+          JF_URL: ${{ vars.JF_NAME }}
           JF_GIT_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           version: latest

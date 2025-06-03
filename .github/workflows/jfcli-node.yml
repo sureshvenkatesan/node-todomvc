@@ -634,10 +634,15 @@ jobs:
         run: |
             jf audit --npm --sast=true --sca=true --secrets=true --licenses=true --validate-secrets=true --vuln=true --format=table --extended-table=true --threads=100 --fail=false
 
+      - name: "Package: config list"
+        run: |
+          jf npm config list
+          jf npm config get registry
+
       - name: "Package: npm Build"   
         continue-on-error: false
         run: |
-          jf npm install --build-name=${{ env.BUILD_NAME}} --build-number=${{ env.BUILD_ID}} 
+          jf npm install --build-name ${{ env.BUILD_NAME}} --build-number ${{ env.BUILD_ID}} 
       
       - name: "Xray: npm Artifact scan"
         timeout-minutes: 15  

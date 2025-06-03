@@ -259,16 +259,14 @@ jobs:
           jf evd create --release-bundle ${{env.BUILD_NAME}} --release-bundle-version ${{env.BUILD_ID}} --predicate ./${{env.EVIDENCE_JSON}} --predicate-type https://jfrog.com/evidence/signature/v1 --key "${{secrets.APP_JFROG_EVD_PRIVATEKEY}}" --key-alias ${{secrets.APP_EVIDENCE_KEY_ALIAS}}
           #echo "    - Evidence for RBv2 attached at [${{env.BUILD_NAME}}](${{env.VER_LINK}}) " >> $GITHUB_STEP_SUMMARY
 
-
-  rbv2PromoteDev:
-    name: "RBv2 Promote DEV"
+  dockerRBv2PromoteDev:
+    name: "Docker: RBv2 Promote DEV"
     needs: dockerPackage
     runs-on: ubuntu-latest
     env:
       RBv2_ENV_VAL: "DEV"
-    defaults:
-       run:
-         working-directory: "${{env.WORKSPACE_TYPESCRIPT_REACT}}"
+      BUILD_NAME: "todomvc-docker"
+      BUILD_ID: "ga-dkr-${{github.run_number}}"
     steps:
       - name: "Setup JFrog CLI"
         uses: jfrog/setup-jfrog-cli@v4
@@ -291,16 +289,14 @@ jobs:
           cat ./${{env.EVIDENCE_JSON}}
           jf evd create --release-bundle ${{env.BUILD_NAME}} --release-bundle-version ${{env.BUILD_ID}} --predicate ./${{env.EVIDENCE_JSON}} --predicate-type https://jfrog.com/evidence/signature/v1 --key "${{secrets.APP_JFROG_EVD_PRIVATEKEY}}" --key-alias ${{secrets.APP_EVIDENCE_KEY_ALIAS}}
 
-
-  rbv2PromoteQA:
-    name: "RBv2 Promote QA"
-    needs: rbv2PromoteDev
+  dockerRBv2PromoteQA:
+    name: "Docker: RBv2 Promote QA"
+    needs: dockerRBv2PromoteDev
     runs-on: ubuntu-latest
     env:
       RBv2_ENV_VAL: "QA"
-    defaults:
-       run:
-         working-directory: "${{env.WORKSPACE_TYPESCRIPT_REACT}}"
+      BUILD_NAME: "todomvc-docker"
+      BUILD_ID: "ga-dkr-${{github.run_number}}"
     steps:
       - name: "Setup JFrog CLI"
         uses: jfrog/setup-jfrog-cli@v4
@@ -322,17 +318,15 @@ jobs:
           echo '{ "actor": "${{github.actor}}", "pipeline": "github actions", "build_name": "${{env.BUILD_NAME}}", "build_id": "${{env.BUILD_ID}}", "evd": "Evidence-RBv2", "rbv2_stage": "${{env.RBv2_ENV_VAL}}" }' > ./${{env.EVIDENCE_JSON}}
           cat ./${{env.EVIDENCE_JSON}}
           jf evd create --release-bundle ${{env.BUILD_NAME}} --release-bundle-version ${{env.BUILD_ID}} --predicate ./${{env.EVIDENCE_JSON}} --predicate-type https://jfrog.com/evidence/signature/v1 --key "${{secrets.APP_JFROG_EVD_PRIVATEKEY}}" --key-alias ${{secrets.APP_EVIDENCE_KEY_ALIAS}}
-
-        
-  rbv2PromoteProd:
-    name: "RBv2 Promote Prod"
-    needs: rbv2PromoteQA
+     
+  dockerRBv2PromoteProd:
+    name: "Docker: RBv2 Promote Prod"
+    needs: dockerRBv2PromoteQA
     runs-on: ubuntu-latest
     env:
       RBv2_ENV_VAL: "PROD"
-    defaults:
-       run:
-         working-directory: "${{env.WORKSPACE_TYPESCRIPT_REACT}}"
+      BUILD_NAME: "todomvc-docker"
+      BUILD_ID: "ga-dkr-${{github.run_number}}"
     steps:
       - name: "Setup JFrog CLI"
         uses: jfrog/setup-jfrog-cli@v4
@@ -387,13 +381,13 @@ jobs:
            jf rt curl "/api/build/${{env.BUILD_NAME}}/${{env.BUILD_ID}}" -o $BUILD_INFO_JSON
            cat $BUILD_INFO_JSON
 
-  saasDistribute:
+  dockerSaasDistribute:
     name: "Distribute to SaaS JPDs & Edges"
-    needs: rbv2PromoteProd
+    needs: dockerRBv2PromoteProd
     runs-on: ubuntu-latest
-    defaults:
-       run:
-         working-directory: "${{env.WORKSPACE_TYPESCRIPT_REACT}}"
+    env:
+      BUILD_NAME: "todomvc-docker"
+      BUILD_ID: "ga-dkr-${{github.run_number}}"
     steps:
       - name: "Setup JFrog CLI"
         uses: jfrog/setup-jfrog-cli@v4
@@ -430,9 +424,9 @@ jobs:
           echo "  - Download RBv2 from Artifactory [${{env.JF_RT_URL}}](${{env.JF_RT_URL}}) " >> $GITHUB_STEP_SUMMARY
           echo " " >> $GITHUB_STEP_SUMMARY
   
-  sleepAfterDistribution:
+  dockerSleepAfterDistribution:
     name: "SYNC Sleep few seconds"
-    needs: saasDistribute
+    needs: dockerSaasDistribute
     runs-on: ubuntu-latest
     env:
       SLEEP_TIME: 60
@@ -443,14 +437,14 @@ jobs:
           sleep ${{env.SLEEP_TIME}}
           echo "Awake now!"
   
-  downloadFromSaasPsAzUse:
-    name: "Download RBv2 from SaaS ${{vars.JF_NAME}} Artifactory"
-    needs: saasDistribute
+  dockerDownloadFromSaasPsAzUse:
+    name: "Docker: Download RBv2 from SaaS ${{vars.JF_NAME}} Artifactory"
+    needs: dockerSaasDistribute
     runs-on: ubuntu-latest
     continue-on-error: true
-    defaults:
-       run:
-         working-directory: "${{env.WORKSPACE_TYPESCRIPT_REACT}}"
+    env:
+      BUILD_NAME: "todomvc-docker"
+      BUILD_ID: "ga-dkr-${{github.run_number}}"
     steps:
       - name: "Setup JFrog CLI"
         uses: jfrog/setup-jfrog-cli@v4
@@ -481,16 +475,15 @@ jobs:
           echo "  - Download RBv2 from SaaS Artifactory [${{env.JF_URL}}](${{env.JF_URL}}) " >> $GITHUB_STEP_SUMMARY
           echo " " >> $GITHUB_STEP_SUMMARY
 
-  downloadFromSaasSolEng:
-    name: "Download RBv2 from SaaS ${{vars.JF_NAME_2}} Artifactory"
-    needs: sleepAfterDistribution
+  dockerDownloadFromSaasSolEng:
+    name: "Docker: Download RBv2 from SaaS ${{vars.JF_NAME_2}} Artifactory"
+    needs: dockerSleepAfterDistribution
     runs-on: ubuntu-latest
     continue-on-error: true
     env:
+      BUILD_NAME: "todomvc-docker"
+      BUILD_ID: "ga-dkr-${{github.run_number}}"
       JF_URL: "https://${{vars.JF_NAME_2}}.jfrog.io"
-    defaults:
-        run:
-          working-directory: "${{env.WORKSPACE_TYPESCRIPT_REACT}}"
     steps:
       - name: "Setup JFrog CLI"
         uses: jfrog/setup-jfrog-cli@v4
@@ -521,16 +514,15 @@ jobs:
           echo "  - Download RBv2 from SaaS Artifactory [${{vars.JF_NAME_2}}](${{env.JF_URL}}) " >> $GITHUB_STEP_SUMMARY
           echo " " >> $GITHUB_STEP_SUMMARY        
 
-  downloadFromSaasEdge:
-    name: "Download RBv2 from SaaS ${{vars.JF_EDGE_NAME}} Edge"
-    needs: sleepAfterDistribution
+  dockerDownloadFromSaasEdge:
+    name: "Docker: Download RBv2 from SaaS ${{vars.JF_EDGE_NAME}} Edge"
+    needs: dockerSleepAfterDistribution
     runs-on: ubuntu-latest
     continue-on-error: true
-    defaults:
-       run:
-         working-directory: "${{env.WORKSPACE_TYPESCRIPT_REACT}}"
     env:
       JF_EDGE_URL: "https://${{vars.JF_EDGE_NAME}}.jfrog.io"
+      BUILD_NAME: "todomvc-docker"
+      BUILD_ID: "ga-dkr-${{github.run_number}}"
     steps:
       - name: "Setup JFrog CLI"
         uses: jfrog/setup-jfrog-cli@v4
@@ -589,7 +581,7 @@ jobs:
 
       - name: "Config JF-CLI"
         run: |
-          export JFROG_CLI_LOG_LEVEL=${{ env.JFROG_CLI_LOG_LEVEL }}
+          chmod -R 755 .
           pwd
           jf npmc --global --repo-resolve ${{ env.RT_REPO_NPM_VIRTUAL}} --repo-deploy ${{ env.RT_REPO_NPM_VIRTUAL}} 
           jf npm cache clean --force

@@ -583,7 +583,7 @@ jobs:
         run: |
           chmod -R 755 .
           pwd
-          jf npmc --global --repo-resolve ${{ env.RT_REPO_NPM_VIRTUAL}} --repo-deploy ${{ env.RT_REPO_NPM_VIRTUAL}} 
+          jf npmc --global --repo-resolve ${{ env.RT_REPO_NPM_VIRTUAL}} --repo-deploy ${{ env.RT_REPO_NPM_VIRTUAL}} --ignore-scripts --package-lock-only
           jf npm cache clean --force
           tree .
 
@@ -642,7 +642,7 @@ jobs:
       - name: "Package: npm Build"   
         continue-on-error: false
         run: |
-          jf npm install --build-name ${{ env.BUILD_NAME}} --build-number ${{ env.BUILD_ID}} --no-package-lock
+          jf npm install --build-name ${{ env.BUILD_NAME}} --build-number ${{ env.BUILD_ID}} --ignore-scripts --package-lock-only
       
       - name: "Xray: npm Artifact scan"
         timeout-minutes: 15  

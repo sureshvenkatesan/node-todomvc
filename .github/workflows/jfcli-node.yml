@@ -557,7 +557,7 @@ jobs:
   
   npmPackage:
     name: "NPM Package"
-    runs-on: ubuntu-latest
+    runs-on: node:22-alpine # ubuntu-latest
     env: 
       BUILD_NAME: "todomvc-npm"
       BUILD_ID: "ga-npm-${{github.run_number}}"

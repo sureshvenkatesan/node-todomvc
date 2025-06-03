@@ -67,7 +67,7 @@ jobs:
 
       - name: "Create ENV variables"
         run: |
-          echo "RT_REPO_DOCKER_URL=${{env.JF_RT_URL}}/${{env.RT_REPO_DOCKER_VIRTUAL}}/${{env.BUILD_NAME}}:${{env.BUILD_ID}}" >> $GITHUB_ENV
+          echo "RT_REPO_DOCKER_URL=${{vars.JF_NAME}}.jfrog.io/${{env.RT_REPO_DOCKER_VIRTUAL}}/${{env.BUILD_NAME}}:${{env.BUILD_ID}}" >> $GITHUB_ENV
 
       - name: "Docker authentication"  # ref https://github.com/marketplace/actions/docker-login
         id: config-docker
@@ -577,7 +577,7 @@ jobs:
         uses: jfrog/setup-jfrog-cli@v4
         id: setup-cli
         env:
-          JF_URL: ${{ vars.JF_NAME }}
+          JF_URL: ${{ env.JF_RT_URL }}
           JF_GIT_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           version: latest
@@ -1054,7 +1054,7 @@ jobs:
         uses: jfrog/setup-jfrog-cli@v4
         id: setup-cli
         env:
-          JF_URL: ${{ vars.JF_URL }}
+          JF_URL: ${{ env.JF_RT_URL }}
           JF_GIT_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           version: latest
@@ -1097,7 +1097,7 @@ jobs:
       - name: "Package: Yarn install"  
         continue-on-error: false
         run: |
-            jf yarn install --build-name=${{ env.BUILD_NAME}} --build-number=${{ env.BUILD_ID}} 
+            jf yarn install --build-name=${{ env.BUILD_NAME}} --build-number=${{ env.BUILD_ID}} --threads=100
   
       - name: "Package: Yarn publish"
         continue-on-error: false

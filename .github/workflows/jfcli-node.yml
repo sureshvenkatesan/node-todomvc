@@ -583,7 +583,7 @@ jobs:
         run: |
           chmod -R 755 .
           pwd
-          jf npmc --global --repo-resolve ${{ env.RT_REPO_NPM_VIRTUAL}} --repo-deploy ${{ env.RT_REPO_NPM_VIRTUAL}} --ignore-scripts --package-lock-only
+          jf npmc --global --repo-resolve ${{ env.RT_REPO_NPM_VIRTUAL}} --repo-deploy ${{ env.RT_REPO_NPM_VIRTUAL}}
           jf npm cache clean --force
           tree .
 

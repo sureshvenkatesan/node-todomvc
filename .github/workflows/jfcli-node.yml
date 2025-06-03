@@ -9,6 +9,7 @@ permissions:
 env:
   JF_RT_URL: "https://${{vars.JF_NAME}}.jfrog.io"
   # BUILD_ID: "ga-${{github.run_number}}"
+  NODE_VERSION: "20" # Node version to use
   JOB_SUMMARY: false
   JFROG_CLI_LOG_LEVEL: DEBUG # DEBUG, INFO, WARN, ERROR
   WORKSPACE_TYPESCRIPT_REACT: "examples/typescript-react"
@@ -557,7 +558,7 @@ jobs:
   
   npmPackage:
     name: "NPM Package"
-    runs-on: node:22-alpine # ubuntu-latest
+    runs-on: ubuntu-latest  # node:22-alpine
     env: 
       BUILD_NAME: "todomvc-npm"
       BUILD_ID: "ga-npm-${{github.run_number}}"
@@ -579,12 +580,17 @@ jobs:
         continue-on-error: true
         uses: actions/checkout@v4
 
+      - name: "Setup Node.js v${{env.NODE_VERSION}}"
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{env.NODE_VERSION}}
+          registry-url: "${{env.JF_RT_URL}}/artifactory/api/npm/${{ env.RT_REPO_NPM_VIRTUAL }}"  # https://psazuse.jfrog.io/artifactory/api/npm/todomvc-npm-virtual/
+
       - name: "Config JF-CLI"
         run: |
           chmod -R 755 .
           pwd
           jf npmc --global --repo-resolve ${{ env.RT_REPO_NPM_VIRTUAL}} --repo-deploy ${{ env.RT_REPO_NPM_VIRTUAL}}
-          jf npm cache clean --force
           tree .
 
       - name: "Software version"
@@ -1065,7 +1071,8 @@ jobs:
         continue-on-error: true
         run: |
           pwd
-          jf yarnc --global --repo-resolve ${{ env.RT_REPO_NPM_VIRTUAL}} 
+          # jf yarnc --global --repo-resolve ${{ env.RT_REPO_NPM_VIRTUAL}} 
+          jf yarnc --repo-resolve ${{ env.RT_REPO_NPM_VIRTUAL}} 
           tree .
           jf yarn cache clean
 
@@ -1094,6 +1101,7 @@ jobs:
       - name: "Package: Yarn install"  
         continue-on-error: false
         run: |
+            jf yarnc --global --repo-resolve ${{ env.RT_REPO_NPM_VIRTUAL}}
             jf yarn install --build-name=${{ env.BUILD_NAME}} --build-number=${{ env.BUILD_ID}} --threads=100
   
       - name: "Package: Yarn publish"

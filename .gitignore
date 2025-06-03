@@ -10,3 +10,6 @@ temp/
 *.log
 *-lock.json
 */*-lock.json
+**/node_modules
+examples/**/node_modules
+examples/**/node_modules/

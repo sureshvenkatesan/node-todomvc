@@ -1039,6 +1039,9 @@ jobs:
     env: 
       BUILD_NAME: "todomvc-yarn"
       BUILD_ID: "ga-yrn-${{github.run_number}}"
+    defaults:
+       run:
+         working-directory: "${{env.WORKSPACE_TYPESCRIPT_REACT}}"
     steps:
       - name: "YARN setup"
         continue-on-error: true

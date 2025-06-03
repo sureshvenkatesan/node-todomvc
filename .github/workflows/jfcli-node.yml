@@ -566,31 +566,30 @@ jobs:
        run:
          working-directory: ${{env.WORKSPACE_TYPESCRIPT_REACT}}
     steps:
+      - name: "Clone VCS"
+        continue-on-error: true
+        uses: actions/checkout@v4
+
       - name: "Setup JFrog CLI"
         uses: jfrog/setup-jfrog-cli@v4
         id: setup-cli
         env:
           JF_URL: ${{ env.JF_RT_URL }}
-          JF_GIT_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           version: latest
           oidc-provider-name: ${{ vars.JF_OIDC_PROVIDER_NAME }}
 
-      - name: "Clone VCS"
-        continue-on-error: true
-        uses: actions/checkout@v4
-
-      - name: "Setup Node.js v${{env.NODE_VERSION}}"
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{env.NODE_VERSION}}
-          registry-url: "${{env.JF_RT_URL}}/artifactory/api/npm/${{ env.RT_REPO_NPM_VIRTUAL }}"  # https://psazuse.jfrog.io/artifactory/api/npm/todomvc-npm-virtual/
+      # - name: "Setup Node.js v${{env.NODE_VERSION}}"
+      #   uses: actions/setup-node@v4
+      #   with:
+      #     node-version: ${{env.NODE_VERSION}}
+      #     registry-url: "${{env.JF_RT_URL}}/artifactory/api/npm/${{ env.RT_REPO_NPM_VIRTUAL }}"  # https://psazuse.jfrog.io/artifactory/api/npm/todomvc-npm-virtual/
 
       - name: "Config JF-CLI"
         run: |
-          chmod -R 755 .
           pwd
-          jf npmc --global --repo-resolve ${{ env.RT_REPO_NPM_VIRTUAL}} --repo-deploy ${{ env.RT_REPO_NPM_VIRTUAL}}
+          # jf npmc --global --repo-resolve ${{ env.RT_REPO_NPM_VIRTUAL}} --repo-deploy ${{ env.RT_REPO_NPM_VIRTUAL}}
+          jf npmc --repo-deploy=${{ env.RT_REPO_NPM_VIRTUAL}} --repo-resolve=${{ env.RT_REPO_NPM_VIRTUAL}}
           tree .
           jf config show
 
@@ -629,18 +628,6 @@ jobs:
           echo "    - Repo URL: ${{env.RT_REPO_NPM_VIRTUAL}}" >> $GITHUB_STEP_SUMMARY
           echo " " >> $GITHUB_STEP_SUMMARY
 
-      - name: "Curation: audit" 
-        timeout-minutes: 15  
-        continue-on-error: true  
-        run: |
-            jf ca --format=table --threads=100
-  
-      - name: "Xray & JAS: Audit"  
-        timeout-minutes: 15  
-        continue-on-error: true   
-        run: |
-            jf audit --npm --sast=true --sca=true --secrets=true --licenses=true --validate-secrets=true --vuln=true --format=table --extended-table=true --threads=100 --fail=false
-
       - name: "Package: config list"
         run: |
           jf npm config list
@@ -649,14 +636,8 @@ jobs:
       - name: "Package: npm Build"   
         continue-on-error: false
         run: |
-          jf npm install --build-name=${{ env.BUILD_NAME}} --build-number=${{ env.BUILD_ID}} --ignore-scripts 
-      
-      - name: "Xray: npm Artifact scan"
-        timeout-minutes: 15  
-        continue-on-error: true    
-        run: |
-          jf scan . --format=table --extended-table=true --threads=100 --fail=false
-
+          jf npm install --build-name=${{ env.BUILD_NAME}} --build-number=${{ env.BUILD_ID}} 
+     
       - name: "Package: npm publish"
         continue-on-error: false
         run: |
@@ -700,20 +681,6 @@ jobs:
            echo "Sleeping for ${{env.SLEEP_TIME}} seconds..."
            sleep ${{env.SLEEP_TIME}}  # Sleeping for 20 seconds before executing the build publish seems to have resolved the build-scan issue. This delay might be helping with synchronization or resource availability, ensuring a smooth build process.
            echo "Awake now!"
-
-      - name: "Optional: Query - Build Scan status"
-        run: |
-          jf xr curl "/api/v1/build/status" -H 'Content-Type: application/json' -d '{"name": "${{env.BUILD_NAME}}", "number": "${{env.BUILD_ID}}" }'
-
-      - name: "BuildInfo: Xray - Build scan"
-        timeout-minutes: 15  
-        continue-on-error: true   
-        run: |
-          jf bs ${{env.BUILD_NAME}} ${{env.BUILD_ID}} --fail=false --format=table --extended-table=true --rescan=false --vuln=true
-
-      - name: "Optional: Build Scan V2" 
-        run: |
-          jf xr curl /api/v2/ci/build -H 'Content-Type: application/json' -d '{"build_name": "${{env.BUILD_NAME}}", "build_number": "${{env.BUILD_ID}}","rescan":false  }'
 
       # Release Bundle v2
       - name: "RLM: RBv2 spec - create"

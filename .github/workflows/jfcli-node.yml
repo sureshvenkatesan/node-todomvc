@@ -642,7 +642,7 @@ jobs:
       - name: "Package: npm Build"   
         continue-on-error: false
         run: |
-          jf npm install --build-name ${{ env.BUILD_NAME}} --build-number ${{ env.BUILD_ID}} 
+          jf npm install --build-name ${{ env.BUILD_NAME}} --build-number ${{ env.BUILD_ID}} --no-package-lock
       
       - name: "Xray: npm Artifact scan"
         timeout-minutes: 15  

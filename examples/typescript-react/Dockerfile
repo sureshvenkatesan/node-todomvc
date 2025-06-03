@@ -1,5 +1,5 @@
 # Use an official Node.js runtime as a parent image
-FROM psazuse.jfrog.io/krishnam-docker-virtual/node:22-alpine
+FROM psazuse.jfrog.io/krishnam-docker-virtual/node:20-alpine
 
 # Set the working directory in the container
 WORKDIR /usr/src/app

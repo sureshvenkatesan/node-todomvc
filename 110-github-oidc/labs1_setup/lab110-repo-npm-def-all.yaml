@@ -1,0 +1,39 @@
+localRepositories:
+  lab110-npm-qa-local:
+    type: npm
+    repoLayout: npm-default
+    xray:
+      enabled: true
+  lab110-npm-dev-local:
+    type: npm
+    repoLayout: npm-default
+    xray:
+      enabled: true
+  lab110-npm-sandbox-local:
+    type: npm
+    repoLayout: npm-default
+    xray:
+      enabled: true
+  lab110-npm-prod-local:
+    type: npm
+    repoLayout: npm-default
+    xray:
+      enabled: true
+remoteRepositories:
+  lab110-npm-remote:
+    type: npm
+    url: https://registry.npmjs.org
+    repoLayout: npm-default
+    xray:
+      enabled: true
+virtualRepositories:
+  lab110-npm-virtual:
+    type: npm
+    repoLayout: npm-default
+    repositories:
+      - lab110-npm-qa-local
+      - lab110-npm-dev-local
+      - lab110-npm-sandbox-local
+      - lab110-npm-prod-local
+      - lab110-npm-remote
+    defaultDeploymentRepo: lab110-npm-sandbox-local 

@@ -1,0 +1,11 @@
+localRepositories:
+  lab110-npm-qa-local: null
+  lab110-npm-dev-local: null
+  lab110-npm-sandbox-local: null
+  lab110-npm-prod-local: null
+remoteRepositories:
+  lab110-npm-remote: null
+virtualRepositories:
+  lab110-npm-virtual: null
+
+

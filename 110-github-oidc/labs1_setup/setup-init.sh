@@ -68,6 +68,14 @@ bash 110-github-oidc/labs1_setup/update_repo_environments.sh academy lab110-npm-
 
 log_task "Repositories Assigned to environments"
 
+DEFAULT_SIGNING_KEY="default-signing-key"
 
-110-github-oidc/labs2_RBv2/auto_generate_upload_gpg_key.sh sureshv-signing-key
+read -p "Enter RBV2 Signing key [${DEFAULT_SIGNING_KEY}]: " RBV2_SIGNING_KEY
+
+# Use default if input is empty
+RBV2_SIGNING_KEY="${RBV2_SIGNING_KEY:-$DEFAULT_SIGNING_KEY}"
+
+export RBV2_SIGNING_KEY
+
+110-github-oidc/labs2_RBv2/auto_generate_upload_gpg_key.sh "$RBV2_SIGNING_KEY"
 log_task "GPG Key generated and uploaded to Artifactory for RBv2 signing"

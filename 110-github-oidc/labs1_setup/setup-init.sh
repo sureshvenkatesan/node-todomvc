@@ -3,6 +3,8 @@
 exec 2>&1
 exec > /tmp/lab-setup.out
 
+source /root/.bashrc
+
 log_error () {
     echo -e "[`date`]\033[31mERROR: $1\033[0m"
 }
@@ -14,6 +16,9 @@ log_task () {
 log_task "Started Lab setup"
 
 cd jfrog
+
+snap install jq
+log_task "Installed jq"
 
 # Wait for Artifactory
 while [ true ]
@@ -40,19 +45,27 @@ log_task "JF Config executed"
 jf rt curl \
     -X PATCH \
     -H "Content-Type: application/yaml" \
-    -T 110-github-oidc/labs1/lab110-repo-npm-def-all.yaml \
+    -T 110-github-oidc/labs1_setup/lab110-repo-npm-def-all.yaml \
      "api/system/configuration" --server-id=academy
 
 log_task "Repositories created"
 
-chmod +x 110-github-oidc/labs1/update_repo_environments.sh
+chmod +x 110-github-oidc/labs1_setup/update_repo_environments.sh
 
-bash 110-github-oidc/labs1/update_repo_environments.sh academy lab110-npm-dev-local DEV
-bash 110-github-oidc/labs1/update_repo_environments.sh academy lab110-npm-prod-local PROD
-bash 110-github-oidc/labs1/update_repo_environments.sh academy lab110-npm-qa-local QA
+curl -X POST \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer  $JFROG_ACCESS_TOKEN" \
+  -d '{"name": "QA"}' \
+  "http://academy-artifactory/access/api/v1/environments"
+
+log_task "Updating repository environments"
+
+bash 110-github-oidc/labs1_setup/update_repo_environments.sh academy lab110-npm-dev-local DEV
+bash 110-github-oidc/labs1_setup/update_repo_environments.sh academy lab110-npm-prod-local PROD
+bash 110-github-oidc/labs1_setup/update_repo_environments.sh academy lab110-npm-qa-local QA
 
 log_task "Repositories Assigned to environments"
 
 
 110-github-oidc/labs2_RBv2/auto_generate_upload_gpg_key.sh sureshv-signing-key
-log_task "GPG Key generated and uploaded to Artifactory"
+log_task "GPG Key generated and uploaded to Artifactory for RBv2 signing"

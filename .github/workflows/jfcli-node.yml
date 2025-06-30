@@ -118,13 +118,13 @@ jobs:
         continue-on-error: false
         run: jf rt bp ${{ env.BUILD_NAME}} ${{ env.BUILD_ID}} --detailed-summary=true
       
-      - name: "Evidence: Build Publish"
-        continue-on-error: true 
-        run: |
-          echo '{ "actor": "${{github.actor}}", "pipeline": "github actions","build_name": "${{env.BUILD_NAME}}", "build_id": "${{env.BUILD_ID}}", "evd": "Evidence-BuildPublish"}' > ./${{env.EVIDENCE_JSON}}
-          cat ./${{env.EVIDENCE_JSON}}
-          jf evd create --build-name ${{env.BUILD_NAME}} --build-number ${{env.BUILD_ID}} --predicate ./${{env.EVIDENCE_JSON}} --predicate-type https://jfrog.com/evidence/signature/v1 --key "${{secrets.APP_JFROG_EVD_PRIVATEKEY}}" --key-alias ${{secrets.APP_EVIDENCE_KEY_ALIAS}}
-          #echo "    - Evidence for BUILD Publish attached. " >> $GITHUB_STEP_SUMMARY
+      # - name: "Evidence: Build Publish"
+      #   continue-on-error: true 
+      #   run: |
+      #     echo '{ "actor": "${{github.actor}}", "pipeline": "github actions","build_name": "${{env.BUILD_NAME}}", "build_id": "${{env.BUILD_ID}}", "evd": "Evidence-BuildPublish"}' > ./${{env.EVIDENCE_JSON}}
+      #     cat ./${{env.EVIDENCE_JSON}}
+      #     jf evd create --build-name ${{env.BUILD_NAME}} --build-number ${{env.BUILD_ID}} --predicate ./${{env.EVIDENCE_JSON}} --predicate-type https://jfrog.com/evidence/signature/v1 --key "${{secrets.APP_JFROG_EVD_PRIVATEKEY}}" --key-alias ${{secrets.APP_EVIDENCE_KEY_ALIAS}}
+      #     #echo "    - Evidence for BUILD Publish attached. " >> $GITHUB_STEP_SUMMARY
 
       - name: "Optional: Add Builds to Indexing Configuration"
         run: |
@@ -153,15 +153,16 @@ jobs:
 
       - name: "RLM: RBv2 Create NEW"
         run: |
-          jf rbc ${{env.BUILD_NAME}} ${{env.BUILD_ID}} --sync=true --signing-key=${{secrets.RBV2_SIGNING_KEY}} --spec=${{env.RBv2_SPEC_JSON}}
+          # jf rbc ${{env.BUILD_NAME}} ${{env.BUILD_ID}} --sync=true --signing-key=${{secrets.RBV2_SIGNING_KEY}} --spec=${{env.RBv2_SPEC_JSON}}
+          jf rbc ${{env.BUILD_NAME}} ${{env.BUILD_ID}} --sync=true --signing-key=${{vars.RBV2_SIGNING_KEY}} --spec=${{env.RBv2_SPEC_JSON}}
 
-      - name: "Evidence: RBv2 state NEW"
-        continue-on-error: true 
-        run: |
-          echo '{ "actor": "${{github.actor}}", "pipeline": "github actions", "build_name": "${{env.BUILD_NAME}}", "build_id": "${{env.BUILD_ID}}", "evd": "Evidence-RBv2", "rbv2_stage": "NEW" }' > ./${{env.EVIDENCE_JSON}}
-          cat ./${{env.EVIDENCE_JSON}}
-          jf evd create --release-bundle ${{env.BUILD_NAME}} --release-bundle-version ${{env.BUILD_ID}} --predicate ./${{env.EVIDENCE_JSON}} --predicate-type https://jfrog.com/evidence/signature/v1 --key "${{secrets.APP_JFROG_EVD_PRIVATEKEY}}" --key-alias ${{secrets.APP_EVIDENCE_KEY_ALIAS}}
-          #echo "    - Evidence for RBv2 attached at [${{env.BUILD_NAME}}](${{env.VER_LINK}}) " >> $GITHUB_STEP_SUMMARY
+      # - name: "Evidence: RBv2 state NEW"
+      #   continue-on-error: true 
+      #   run: |
+      #     echo '{ "actor": "${{github.actor}}", "pipeline": "github actions", "build_name": "${{env.BUILD_NAME}}", "build_id": "${{env.BUILD_ID}}", "evd": "Evidence-RBv2", "rbv2_stage": "NEW" }' > ./${{env.EVIDENCE_JSON}}
+      #     cat ./${{env.EVIDENCE_JSON}}
+      #     jf evd create --release-bundle ${{env.BUILD_NAME}} --release-bundle-version ${{env.BUILD_ID}} --predicate ./${{env.EVIDENCE_JSON}} --predicate-type https://jfrog.com/evidence/signature/v1 --key "${{secrets.APP_JFROG_EVD_PRIVATEKEY}}" --key-alias ${{secrets.APP_EVIDENCE_KEY_ALIAS}}
+      #     #echo "    - Evidence for RBv2 attached at [${{env.BUILD_NAME}}](${{env.VER_LINK}}) " >> $GITHUB_STEP_SUMMARY
 
   npmRBv2PromoteDev:
     name: "RBv2 Promote DEV"
@@ -169,7 +170,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       RBv2_ENV_VAL: "DEV"
-      BUILD_NAME: "todomvc-npm"
+      BUILD_NAME: "lab110-npm-oidc"
       BUILD_ID: "ga-npm-${{github.run_number}}"
     steps:
       - name: "Setup JFrog CLI"
@@ -184,7 +185,7 @@ jobs:
 
       - name: "RLM: RBv2 promote ${{env.RBv2_ENV_VAL}}"
         run: |
-          jf rbp ${{env.BUILD_NAME}} ${{env.BUILD_ID}} ${{env.RBv2_ENV_VAL}} --sync=true --signing-key=${{secrets.RBV2_SIGNING_KEY}}  
+          jf rbp ${{env.BUILD_NAME}} ${{env.BUILD_ID}} ${{env.RBv2_ENV_VAL}} --sync=true --signing-key=${{vars.RBV2_SIGNING_KEY}}  
 
       - name: "Evidence: RBv2 state ${{env.RBv2_ENV_VAL}}"
         continue-on-error: true
@@ -199,7 +200,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       RBv2_ENV_VAL: "QA"
-      BUILD_NAME: "todomvc-npm"
+      BUILD_NAME: "lab110-npm-oidc"
       BUILD_ID: "ga-npm-${{github.run_number}}"
     defaults:
         run:
@@ -232,7 +233,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       RBv2_ENV_VAL: "PROD"
-      BUILD_NAME: "todomvc-npm"
+      BUILD_NAME: "lab110-npm-oidc"
       BUILD_ID: "ga-npm-${{github.run_number}}"
     defaults:
         run:
@@ -291,265 +292,182 @@ jobs:
             jf rt curl "/api/build/${{env.BUILD_NAME}}/${{env.BUILD_ID}}" -o $BUILD_INFO_JSON
             cat $BUILD_INFO_JSON
 
-  npmSaasDistribute:
-    name: "Distribute to SaaS JPDs & Edges"
-    needs: npmRBv2PromoteProd
-    runs-on: ubuntu-latest
-    env:
-      BUILD_NAME: "todomvc-npm"
-      BUILD_ID: "ga-npm-${{github.run_number}}"
-    steps:
-      - name: "Setup JFrog CLI"
-        uses: jfrog/setup-jfrog-cli@v4
-        id: setup-cli
-        env:
-          JF_URL: ${{env.JF_RT_URL}}
-          JFROG_CLI_LOG_LEVEL: ${{env.JFROG_CLI_LOG_LEVEL}}
-        with:
-          version: latest  #2.71.0
-          oidc-provider-name: ${{vars.JF_OIDC_PROVIDER_NAME}}
+  # npmSaasDistribute:
+  #   name: "Distribute to SaaS JPDs & Edges"
+  #   needs: npmRBv2PromoteProd
+  #   runs-on: ubuntu-latest
+  #   env:
+  #     BUILD_NAME: "todomvc-npm"
+  #     BUILD_ID: "ga-npm-${{github.run_number}}"
+  #   steps:
+  #     - name: "Setup JFrog CLI"
+  #       uses: jfrog/setup-jfrog-cli@v4
+  #       id: setup-cli
+  #       env:
+  #         JF_URL: ${{env.JF_RT_URL}}
+  #         JFROG_CLI_LOG_LEVEL: ${{env.JFROG_CLI_LOG_LEVEL}}
+  #       with:
+  #         version: latest  #2.71.0
+  #         oidc-provider-name: ${{vars.JF_OIDC_PROVIDER_NAME}}
 
-      - name: "RBv2 Distribute to SaaS Artifactory and edges"
-        run: |
-          jf rbd ${{env.BUILD_NAME}} ${{env.BUILD_ID}} --sync=true --create-repo=true
+  #     - name: "RBv2 Distribute to SaaS Artifactory and edges"
+  #       run: |
+  #         jf rbd ${{env.BUILD_NAME}} ${{env.BUILD_ID}} --sync=true --create-repo=true
 
-      # refer: https://docs.jfrog-applications.jfrog.io/jfrog-applications/jfrog-cli/binaries-management-with-jfrog-artifactory/release-lifecycle-management#download-release-bundle-v2-content
-      - name: "Download RBv2 from SaaS Artifactory"
-        run: |
-          jf rt dl --bundle ${{env.BUILD_NAME}}/${{env.BUILD_ID}} --detailed-summary=true --threads=100
+  #     # refer: https://docs.jfrog-applications.jfrog.io/jfrog-applications/jfrog-cli/binaries-management-with-jfrog-artifactory/release-lifecycle-management#download-release-bundle-v2-content
+  #     - name: "Download RBv2 from SaaS Artifactory"
+  #       run: |
+  #         jf rt dl --bundle ${{env.BUILD_NAME}}/${{env.BUILD_ID}} --detailed-summary=true --threads=100
 
-      - name: "Query Distribution status"  # https://psazuse.jfrog.io/lifecycle/api/v2/distribution/trackers/spring-petclinic/ga-49
-        run: |
-            jf rt curl "/lifecycle/api/v2/distribution/trackers/${{env.BUILD_NAME}}/${{env.BUILD_ID}}"
+  #     - name: "Query Distribution status"  # https://psazuse.jfrog.io/lifecycle/api/v2/distribution/trackers/spring-petclinic/ga-49
+  #       run: |
+  #           jf rt curl "/lifecycle/api/v2/distribution/trackers/${{env.BUILD_NAME}}/${{env.BUILD_ID}}"
 
-      - name: "Info list"
-        run: |
-          pwd 
-          ls -lR .
-      - name: "Optional Saas Artifactory summary"
-        run: |
-          echo "#📦 NPM Download package from SaaS " >> $GITHUB_STEP_SUMMARY
-          echo "  - Download RBv2 from Artifactory [${{env.JF_RT_URL}}](${{env.JF_RT_URL}}) " >> $GITHUB_STEP_SUMMARY
-          echo " " >> $GITHUB_STEP_SUMMARY
+  #     - name: "Info list"
+  #       run: |
+  #         pwd 
+  #         ls -lR .
+  #     - name: "Optional Saas Artifactory summary"
+  #       run: |
+  #         echo "#📦 NPM Download package from SaaS " >> $GITHUB_STEP_SUMMARY
+  #         echo "  - Download RBv2 from Artifactory [${{env.JF_RT_URL}}](${{env.JF_RT_URL}}) " >> $GITHUB_STEP_SUMMARY
+  #         echo " " >> $GITHUB_STEP_SUMMARY
 
-  npmSleepAfterDistribution:
-    name: "SYNC Sleep few seconds"
-    needs: npmSaasDistribute
-    runs-on: ubuntu-latest
-    env:
-      SLEEP_TIME: 60
-    steps:
-      - name: "Sleep for ${{env.SLEEP_TIME}} seconds"
-        run: |
-          echo "Sleeping for ${{env.SLEEP_TIME}} seconds..."
-          sleep ${{env.SLEEP_TIME}}
-          echo "Awake now!"
+  # npmSleepAfterDistribution:
+  #   name: "SYNC Sleep few seconds"
+  #   needs: npmSaasDistribute
+  #   runs-on: ubuntu-latest
+  #   env:
+  #     SLEEP_TIME: 60
+  #   steps:
+  #     - name: "Sleep for ${{env.SLEEP_TIME}} seconds"
+  #       run: |
+  #         echo "Sleeping for ${{env.SLEEP_TIME}} seconds..."
+  #         sleep ${{env.SLEEP_TIME}}
+  #         echo "Awake now!"
 
-  npmDownloadFromSaasPsAzUse:
-    name: "Download RBv2 from SaaS ${{vars.JF_NAME}} Artifactory"
-    needs: npmSaasDistribute
-    runs-on: ubuntu-latest
-    continue-on-error: true
-    env:
-      BUILD_NAME: "todomvc-npm"
-      BUILD_ID: "ga-npm-${{github.run_number}}"
-    steps:
-      - name: "Setup JFrog CLI"
-        uses: jfrog/setup-jfrog-cli@v4
-        id: setup-cli
-        env:
-          JF_URL: ${{env.JF_RT_URL}}
-          JFROG_CLI_LOG_LEVEL: ${{env.JFROG_CLI_LOG_LEVEL}}
-        with:
-          version: latest 
-          oidc-provider-name: ${{vars.JF_OIDC_PROVIDER_NAME}}
+  # npmDownloadFromSaasPsAzUse:
+  #   name: "Download RBv2 from SaaS ${{vars.JF_NAME}} Artifactory"
+  #   needs: npmSaasDistribute
+  #   runs-on: ubuntu-latest
+  #   continue-on-error: true
+  #   env:
+  #     BUILD_NAME: "todomvc-npm"
+  #     BUILD_ID: "ga-npm-${{github.run_number}}"
+  #   steps:
+  #     - name: "Setup JFrog CLI"
+  #       uses: jfrog/setup-jfrog-cli@v4
+  #       id: setup-cli
+  #       env:
+  #         JF_URL: ${{env.JF_RT_URL}}
+  #         JFROG_CLI_LOG_LEVEL: ${{env.JFROG_CLI_LOG_LEVEL}}
+  #       with:
+  #         version: latest 
+  #         oidc-provider-name: ${{vars.JF_OIDC_PROVIDER_NAME}}
 
-      - name: "Artifactory config show"
-        run: |
-          jf config show
+  #     - name: "Artifactory config show"
+  #       run: |
+  #         jf config show
 
-      - name: "Download RBv2 from ${{vars.JF_NAME}} SaaS"
-        run: |
-          jf rt dl --bundle ${{env.BUILD_NAME}}/${{env.BUILD_ID}} --detailed-summary=true --threads=100
+  #     - name: "Download RBv2 from ${{vars.JF_NAME}} SaaS"
+  #       run: |
+  #         jf rt dl --bundle ${{env.BUILD_NAME}}/${{env.BUILD_ID}} --detailed-summary=true --threads=100
 
-      - name: "Info list"
-        run: |
-          pwd
-          ls -lR .
+  #     - name: "Info list"
+  #       run: |
+  #         pwd
+  #         ls -lR .
 
-      - name: "Optional: Saas ${{vars.JF_RT_URL}} Artifactory summary"
-        run: |
-          echo "# :frog:📦 NPM Download package from SaaS " >> $GITHUB_STEP_SUMMARY
-          echo "  - Download RBv2 from SaaS Artifactory [${{env.JF_URL}}](${{env.JF_URL}}) " >> $GITHUB_STEP_SUMMARY
-          echo " " >> $GITHUB_STEP_SUMMARY
+  #     - name: "Optional: Saas ${{vars.JF_RT_URL}} Artifactory summary"
+  #       run: |
+  #         echo "# :frog:📦 NPM Download package from SaaS " >> $GITHUB_STEP_SUMMARY
+  #         echo "  - Download RBv2 from SaaS Artifactory [${{env.JF_URL}}](${{env.JF_URL}}) " >> $GITHUB_STEP_SUMMARY
+  #         echo " " >> $GITHUB_STEP_SUMMARY
 
-  npmDownloadFromSaasSolEng:
-    name: "Download RBv2 from SaaS ${{vars.JF_NAME_2}} Artifactory"
-    needs: npmSleepAfterDistribution
-    runs-on: ubuntu-latest
-    continue-on-error: true
-    env:
-      JF_URL: "https://${{vars.JF_NAME_2}}.jfrog.io"
-      BUILD_NAME: "todomvc-npm"
-      BUILD_ID: "ga-npm-${{github.run_number}}"
-    defaults:
-        run:
-          working-directory: "${{env.WORKSPACE_TYPESCRIPT_REACT}}"
-    steps:
-      - name: "Setup JFrog CLI"
-        uses: jfrog/setup-jfrog-cli@v4
-        id: setup-cli
-        env:
-          JF_URL: "${{env.JF_URL}}"
-          JFROG_CLI_LOG_LEVEL: ${{env.JFROG_CLI_LOG_LEVEL}}
-        with:
-          version: latest 
-          oidc-provider-name: ${{vars.JF_OIDC_PROVIDER_NAME}}
+  # npmDownloadFromSaasSolEng:
+  #   name: "Download RBv2 from SaaS ${{vars.JF_NAME_2}} Artifactory"
+  #   needs: npmSleepAfterDistribution
+  #   runs-on: ubuntu-latest
+  #   continue-on-error: true
+  #   env:
+  #     JF_URL: "https://${{vars.JF_NAME_2}}.jfrog.io"
+  #     BUILD_NAME: "todomvc-npm"
+  #     BUILD_ID: "ga-npm-${{github.run_number}}"
+  #   defaults:
+  #       run:
+  #         working-directory: "${{env.WORKSPACE_TYPESCRIPT_REACT}}"
+  #   steps:
+  #     - name: "Setup JFrog CLI"
+  #       uses: jfrog/setup-jfrog-cli@v4
+  #       id: setup-cli
+  #       env:
+  #         JF_URL: "${{env.JF_URL}}"
+  #         JFROG_CLI_LOG_LEVEL: ${{env.JFROG_CLI_LOG_LEVEL}}
+  #       with:
+  #         version: latest 
+  #         oidc-provider-name: ${{vars.JF_OIDC_PROVIDER_NAME}}
 
-      - name: "Artifactory config show"
-        run: |
-          jf config show
+  #     - name: "Artifactory config show"
+  #       run: |
+  #         jf config show
           
-      - name: "Download RBv2 from ${{vars.JF_NAME_2}} SaaS"
-        run: |
-          jf rt dl --bundle ${{env.BUILD_NAME}}/${{env.BUILD_ID}} --detailed-summary=true --threads=100
+  #     - name: "Download RBv2 from ${{vars.JF_NAME_2}} SaaS"
+  #       run: |
+  #         jf rt dl --bundle ${{env.BUILD_NAME}}/${{env.BUILD_ID}} --detailed-summary=true --threads=100
 
-      - name: "Info list"
-        run: |
-          pwd
-          ls -lR .
+  #     - name: "Info list"
+  #       run: |
+  #         pwd
+  #         ls -lR .
 
-      - name: "Optional: Saas ${{vars.JF_NAME_2}} Artifactory summary"
-        run: |
-          echo "# :frog:📦 NPM Download package from SaaS " >> $GITHUB_STEP_SUMMARY
-          echo "  - Download RBv2 from SaaS Artifactory [${{vars.JF_NAME_2}}](${{env.JF_URL}}) " >> $GITHUB_STEP_SUMMARY
-          echo " " >> $GITHUB_STEP_SUMMARY        
+  #     - name: "Optional: Saas ${{vars.JF_NAME_2}} Artifactory summary"
+  #       run: |
+  #         echo "# :frog:📦 NPM Download package from SaaS " >> $GITHUB_STEP_SUMMARY
+  #         echo "  - Download RBv2 from SaaS Artifactory [${{vars.JF_NAME_2}}](${{env.JF_URL}}) " >> $GITHUB_STEP_SUMMARY
+  #         echo " " >> $GITHUB_STEP_SUMMARY        
 
-  npmDownloadFromSaasEdge:
-    name: "Download RBv2 from SaaS ${{vars.JF_EDGE_NAME}} Edge"
-    needs: npmSleepAfterDistribution
-    runs-on: ubuntu-latest
-    continue-on-error: true
-    env:
-      JF_EDGE_URL: "https://${{vars.JF_EDGE_NAME}}.jfrog.io"
-      BUILD_NAME: "todomvc-npm"
-      BUILD_ID: "ga-npm-${{github.run_number}}"
-    steps:
-      - name: "Setup JFrog CLI"
-        uses: jfrog/setup-jfrog-cli@v4
-        id: setup-cli
-        env:
-          JF_URL: ${{env.JF_EDGE_URL}}
-          JFROG_CLI_LOG_LEVEL: ${{env.JFROG_CLI_LOG_LEVEL}}
-        with:
-          version: latest 
-          oidc-provider-name: ${{vars.JF_EDGE_OIDC_PROVIDER_NAME}}    
+  # npmDownloadFromSaasEdge:
+  #   name: "Download RBv2 from SaaS ${{vars.JF_EDGE_NAME}} Edge"
+  #   needs: npmSleepAfterDistribution
+  #   runs-on: ubuntu-latest
+  #   continue-on-error: true
+  #   env:
+  #     JF_EDGE_URL: "https://${{vars.JF_EDGE_NAME}}.jfrog.io"
+  #     BUILD_NAME: "todomvc-npm"
+  #     BUILD_ID: "ga-npm-${{github.run_number}}"
+  #   steps:
+  #     - name: "Setup JFrog CLI"
+  #       uses: jfrog/setup-jfrog-cli@v4
+  #       id: setup-cli
+  #       env:
+  #         JF_URL: ${{env.JF_EDGE_URL}}
+  #         JFROG_CLI_LOG_LEVEL: ${{env.JFROG_CLI_LOG_LEVEL}}
+  #       with:
+  #         version: latest 
+  #         oidc-provider-name: ${{vars.JF_EDGE_OIDC_PROVIDER_NAME}}    
       
-      - name: "Edge config show"
-        run: |
-          jf config show
+  #     - name: "Edge config show"
+  #       run: |
+  #         jf config show
 
-      # refer: https://docs.jfrog-applications.jfrog.io/jfrog-applications/jfrog-cli/binaries-management-with-jfrog-artifactory/release-lifecycle-management#download-release-bundle-v2-content
-      - name: "Download RBv2 from SaaS Edge"
-        run: |
-          jf rt dl --bundle ${{env.BUILD_NAME}}/${{env.BUILD_ID}} --detailed-summary=true --threads=100
+  #     # refer: https://docs.jfrog-applications.jfrog.io/jfrog-applications/jfrog-cli/binaries-management-with-jfrog-artifactory/release-lifecycle-management#download-release-bundle-v2-content
+  #     - name: "Download RBv2 from SaaS Edge"
+  #       run: |
+  #         jf rt dl --bundle ${{env.BUILD_NAME}}/${{env.BUILD_ID}} --detailed-summary=true --threads=100
 
-      - name: "Info list"
-        run: |
-          pwd
-          ls -lR .
+  #     - name: "Info list"
+  #       run: |
+  #         pwd
+  #         ls -lR .
 
-      - name: "Optional: Saas ${{vars.JF_EDGE_NAME}} Edge summary"
-        run: |
-          echo "# :frog:📦 NPM Download package from SaaS " >> $GITHUB_STEP_SUMMARY
-          echo "  - Download RBv2 from Edge [${{vars.JF_EDGE_NAME}}](${{env.JF_EDGE_URL}}) " >> $GITHUB_STEP_SUMMARY
-          echo " " >> $GITHUB_STEP_SUMMARY
+  #     - name: "Optional: Saas ${{vars.JF_EDGE_NAME}} Edge summary"
+  #       run: |
+  #         echo "# :frog:📦 NPM Download package from SaaS " >> $GITHUB_STEP_SUMMARY
+  #         echo "  - Download RBv2 from Edge [${{vars.JF_EDGE_NAME}}](${{env.JF_EDGE_URL}}) " >> $GITHUB_STEP_SUMMARY
+  #         echo " " >> $GITHUB_STEP_SUMMARY
 
 
 
-  yarnPackage:
-    name: "Yarn Package"
-    runs-on: ubuntu-latest
-    env: 
-      BUILD_NAME: "todomvc-yarn"
-      BUILD_ID: "ga-yrn-${{github.run_number}}"
-    defaults:
-       run:
-         working-directory: "${{env.WORKSPACE_TYPESCRIPT_REACT}}"
-    steps:
-      - name: "YARN setup"
-        continue-on-error: true
-        run: |
-          npm install -g yarn
-          corepack enable
-          corepack prepare yarn@3 --activate
-
-      - name: "Setup JFrog CLI"
-        uses: jfrog/setup-jfrog-cli@v4
-        id: setup-cli
-        env:
-          JF_URL: ${{ env.JF_RT_URL }}
-          JF_GIT_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          version: latest
-          oidc-provider-name: ${{ vars.JF_OIDC_PROVIDER_NAME }}
-
-      - name: "Clone VCS"
-        continue-on-error: true
-        uses: actions/checkout@v4
-      
-      - name: "Config jf with yarn repos" 
-        continue-on-error: true
-        run: |
-          pwd
-          # jf yarnc --global --repo-resolve ${{ env.RT_REPO_NPM_VIRTUAL}} 
-          jf yarnc --repo-resolve ${{ env.RT_REPO_NPM_VIRTUAL}} 
-          tree .
-          jf yarn cache clean
-
-      - name: prestep-summary
-        continue-on-error: true
-        run: |
-          jfcliv=`jf -v`
-          nodeVer=`node -v`
-          npmVer=`npm -v`
-          yarnVer=`yarn -v`
-          echo "# :frog: Prestep Summary :pushpin:" >> $GITHUB_STEP_SUMMARY
-          echo " " >> $GITHUB_STEP_SUMMARY
-          echo " " >> $GITHUB_STEP_SUMMARY
-          echo " - Installed JFrog CLI [${jfcliv}](https://jfrog.com/getcli/) and [Node ${nodeVer} and  NPM ${npmVer}](https://github.com/actions/setup-node) " >> $GITHUB_STEP_SUMMARY
-          echo " - $(jf --version) " >> $GITHUB_STEP_SUMMARY
-          echo " - Node $(node -v) " >> $GITHUB_STEP_SUMMARY
-          echo " - NPM $(npm -v) " >> $GITHUB_STEP_SUMMARY
-          echo " - YARN $(yarn -v) " >> $GITHUB_STEP_SUMMARY
-          echo " - Configured the JFrog Cli with SaaS Artifactory OIDC integration: ${{ vars.JF_OIDC_PROVIDER_NAME }} " >> $GITHUB_STEP_SUMMARY
-          echo " - Variables info" >> $GITHUB_STEP_SUMMARY
-          echo "    - ID: ${{env.BUILD_ID}} " >> $GITHUB_STEP_SUMMARY
-          echo "    - Build Name: ${{env.BUILD_NAME}} " >> $GITHUB_STEP_SUMMARY
-          echo "    - Repo URL: ${{env.RT_REPO_NPM_VIRTUAL}}" >> $GITHUB_STEP_SUMMARY
-          echo " " >> $GITHUB_STEP_SUMMARY   
-
-      - name: "Package: Yarn install"  
-        continue-on-error: false
-        run: |
-            jf yarnc --global --repo-resolve ${{ env.RT_REPO_NPM_VIRTUAL}}
-            jf yarn install --build-name=${{ env.BUILD_NAME}} --build-number=${{ env.BUILD_ID}} --threads=100
   
-      - name: "Package: Yarn publish"
-        continue-on-error: false
-        run: |
-          jf yarn publish --build-name=${{ env.BUILD_NAME}} --build-number=${{ env.BUILD_ID}} 
-
-      - name: "BCE: Collect env"
-        continue-on-error: true
-        run: jf rt bce ${{ env.BUILD_NAME}} ${{ env.BUILD_ID}} 
-   
-      - name: "BAG: Add VCS info"
-        continue-on-error: true
-        run: jf rt bag ${{ env.BUILD_NAME}} ${{ env.BUILD_ID}} 
-    
-      - name: "BP: Build Publish"  
-        continue-on-error: false
-        run: jf rt bp ${{ env.BUILD_NAME}} ${{ env.BUILD_ID}} --detailed-summary=true
     
   

@@ -58,6 +58,8 @@ curl -X POST \
   -d '{"name": "QA"}' \
   "http://academy-artifactory/access/api/v1/environments"
 
+log_task "Environment QA created"
+
 log_task "Updating repository environments"
 
 bash 110-github-oidc/labs1_setup/update_repo_environments.sh academy lab110-npm-dev-local DEV
